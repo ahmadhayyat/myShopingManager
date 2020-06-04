@@ -1,4 +1,4 @@
-package com.example.budgetcalculator;
+package com.example.myShopingManager;
 
 import org.junit.Test;
 

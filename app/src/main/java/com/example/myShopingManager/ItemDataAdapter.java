@@ -1,4 +1,4 @@
-package com.example.budgetcalculator;
+package com.example.myShopingManager;
 
 import android.app.AlertDialog;
 import android.content.Context;

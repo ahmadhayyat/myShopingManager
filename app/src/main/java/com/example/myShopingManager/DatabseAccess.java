@@ -1,6 +1,5 @@
-package com.example.budgetcalculator;
+package com.example.myShopingManager;
 
-import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;

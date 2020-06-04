@@ -1,4 +1,4 @@
-package com.example.budgetcalculator;
+package com.example.myShopingManager;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;

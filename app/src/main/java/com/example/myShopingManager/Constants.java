@@ -1,4 +1,4 @@
-package com.example.budgetcalculator;
+package com.example.myShopingManager;
 
 public class Constants {
     public static final String ITEM_ID = "id";
