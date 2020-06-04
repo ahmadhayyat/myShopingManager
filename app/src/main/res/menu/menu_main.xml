@@ -1,0 +1,19 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.budgetcalculator.MainActivity">
+
+    <item
+        android:id="@+id/action_calculate"
+        android:icon="@drawable/ic_pakistan_rupee_currency_symbol"
+        android:orderInCategory="100"
+        android:title="@string/action_cal"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_delAll"
+        android:orderInCategory="100"
+        android:title="@string/action_delAll"
+        app:icon="@drawable/ic_delete"
+        app:showAsAction="withText" />
+</menu>

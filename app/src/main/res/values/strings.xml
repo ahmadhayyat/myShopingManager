@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">My Shopping Manager</string>
+    <string name="action_cal">Calculate</string>
+    <string name="action_delAll">Delete All</string>
+    <string name="speech_prompt">Say something&#8230;</string>
+    <string name="speech_not_supported">Sorry! Your device doesn\'t support speech input</string>
+    <string name="title_activity_sheets">Sheets</string>
+    <string name="msg" >Permission required to store data in phone\n\nAre you sure to <b>ALLOW</b> this permission? </string>
+
+</resources>
