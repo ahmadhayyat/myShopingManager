@@ -1,9 +1,9 @@
 package com.example.myShopingManager;
 
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.speech.RecognizerIntent;
@@ -11,15 +11,19 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,14 +36,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+import cn.pedant.SweetAlert.SweetAlertDialog;
+
+public class MainActivity extends AppActivity implements ItemDataAdapter.ItemAdapterInteraction {
+    ViewModel viewModel;
+    Context context;
     private final int REQ_CODE_SPEECH_INPUT = 100;
-    List<ItemsData> itemsDataList = new ArrayList<>();
-    ItemsData itemsData = new ItemsData();
-    TinyDB tinyDB;
     RecyclerView recyclerView;
     TextView noItem, tv_total;
-    Integer itemId;
     ItemDataAdapter itemDataAdapter;
     DatabseAccess db;
     LinearLayout LLcal;
@@ -48,10 +52,8 @@ public class MainActivity extends AppCompatActivity {
     View view;
     AlertDialog.Builder builder;
     AlertDialog dialog;
-    String date;
-
-    public MainActivity() {
-    }
+    FloatingActionButton fab;
+    SweetAlertDialog sweetAlertDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,67 +61,33 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        initViews();
+        initVariables();
+        setupClicks();
+        loadItems();
+        loadSwipeHelper();
+    }
 
-        Intent intent = getIntent();
-        sheetId = intent.getIntExtra("sheetId", 0);
-        sheetName = intent.getStringExtra("sheetName");
-        itemsDate = getDate();
-
-
-        tinyDB = new TinyDB(MainActivity.this);
-        db = new DatabseAccess(this);
+    @Override
+    void initViews() {
         recyclerView = findViewById(R.id.recylerview);
         tv_total = findViewById(R.id.tv_total);
         LLcal = findViewById(R.id.LLcal);
-        LLcal.setVisibility(View.GONE);
         noItem = findViewById(R.id.tv_noItem);
-        loadItems();
+        fab = findViewById(R.id.fab);
+    }
+
+    @Override
+    void initVariables() {
+        context = this;
+        Intent intent = getIntent();
+        sheetId = intent.getIntExtra(Constants.EXTRA_SHEET_ID, 0);
+        sheetName = intent.getStringExtra(Constants.EXTRA_SHEET_NAME);
         builder = new AlertDialog.Builder(MainActivity.this);
         dialog = builder.create();
-
-        final FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                final View layout = LayoutInflater.from(MainActivity.this).inflate(R.layout.add_item_layout, null);
-                builder.setView(layout);
-                final TextView et_itemName = layout.findViewById(R.id.et_itemName);
-                ImageButton itemLayoutMic = layout.findViewById(R.id.itemLayoutMic);
-                itemLayoutMic.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        promptSpeechInput();
-                    }
-                });
-                builder.setPositiveButton("Add", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        itemId = tinyDB.getInt(Constants.ITEM_ID);
-
-
-                        db.open();
-                        db.addItems(et_itemName.getText().toString(), sheetId, itemsDate);
-                        db.close();
-                        loadItems();
-                        itemDataAdapter.notifyDataSetChanged();
-
-
-                    }
-                });
-                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                });
-
-                dialog = builder.create();
-                dialog.setCancelable(false);
-                dialog.show();
-
-
-            }
-        });
+        LLcal.setVisibility(View.GONE);
+        sweetAlertDialog = new SweetAlertDialog(context);
+        view = getWindow().getDecorView().getRootView();
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -128,12 +96,34 @@ public class MainActivity extends AppCompatActivity {
                     fab.hide();
                 else if (dy < 0)
                     fab.show();
-
             }
         });
+    }
 
-        loadSwipeHelper();
-        view = getWindow().getDecorView().getRootView();
+    @Override
+    void setupClicks() {
+        fab.setOnClickListener(onFabClick());
+    }
+
+    private View.OnClickListener onFabClick() {
+        return view1 -> {
+            final View layout = LayoutInflater.from(MainActivity.this).inflate(R.layout.add_item_layout, null);
+            builder.setView(layout);
+            final TextView et_itemName = layout.findViewById(R.id.et_itemName);
+            ImageButton itemLayoutMic = layout.findViewById(R.id.itemLayoutMic);
+            itemLayoutMic.setOnClickListener(v -> promptSpeechInput());
+            builder.setPositiveButton("Add", (dialog, which) -> {
+                Items item = new Items();
+                item.setName(et_itemName.getText().toString());
+                item.setPrice(0);
+                item.setSheetId(sheetId);
+                viewModel.insertItem(item);
+            });
+            builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+            dialog = builder.create();
+            dialog.setCancelable(false);
+            dialog.show();
+        };
     }
 
     private void promptSpeechInput() {
@@ -152,30 +142,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadSwipeHelper() {
-        SwipeHelper swipeHelper = new SwipeHelper(this, recyclerView) {
+        new SwipeHelper(this, recyclerView) {
             @Override
             public void instantiateUnderlayButton(RecyclerView.ViewHolder viewHolder, List<UnderlayButton> underlayButtons) {
                 underlayButtons.add(new SwipeHelper.UnderlayButton(
                         "Edit",
                         0,
-                        Color.parseColor("#FF9502"),
-                        new SwipeHelper.UnderlayButtonClickListener() {
-                            @Override
-                            public void onClick(int pos) {
-                                itemDataAdapter.editName(pos, view);
-                            }
-                        }
+                        getColor(R.color.orange),
+                        pos -> updateItemDialog(pos)
                 ));
 
                 underlayButtons.add(new SwipeHelper.UnderlayButton(
                         "Delete",
                         0,
-                        Color.parseColor("#FF3C30"),
-                        new SwipeHelper.UnderlayButtonClickListener() {
-                            @Override
-                            public void onClick(int pos) {
-                                itemDataAdapter.deleteItem(pos, view);
-                            }
+                        getColor(R.color.red),
+                        pos -> {
+                            Items item = itemDataAdapter.getItemAt(pos);
+                            viewModel.deleteItem(item);
+                            Snackbar snackbar = Snackbar.make(view, "Deleted", Snackbar.LENGTH_LONG);
+                            snackbar.setTextColor(getColor(R.color.red));
+                            snackbar.show();
                         }
                 ));
             }
@@ -188,20 +174,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void loadItems() {
-        db.open();
-        itemsDataList = db.getItems(sheetId);
-        db.close();
-        itemDataAdapter = new ItemDataAdapter(itemsDataList, MainActivity.this, sheetId);
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-
+        itemDataAdapter = new ItemDataAdapter();
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(itemDataAdapter);
-        if (itemsDataList.size() > 0) {
-            noItem.setVisibility(View.GONE);
-        } else {
-            noItem.setVisibility(View.VISIBLE);
-        }
-        getSupportActionBar().setTitle(sheetName + " ( " + itemsDataList.size() + " )");
+        itemDataAdapter.setInteraction(this);
+        viewModel = new ViewModelProvider(this).get(ViewModel.class);
+        viewModel.getItemsList(sheetId).observe(this, items -> {
+            itemDataAdapter.submitList(items);
+            if (items.size() > 0)
+                noItem.setVisibility(View.GONE);
+            else
+                noItem.setVisibility(View.VISIBLE);
+            getSupportActionBar().setTitle(sheetName + " ( " + items.size() + " )");
+            getSupportActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_TITLE);
+        });
     }
 
     @Override
@@ -213,40 +199,36 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_calculate) {
-            db.open();
-            Integer total = db.calculate(sheetId);
-            db.close();
-            LLcal.setVisibility(View.VISIBLE);
-            new Handler().postDelayed(new Runnable() {
-                public void run() {
-                    LLcal.setVisibility(View.GONE);
+            LiveData<List<Items>> allItems = viewModel.getItemsList(sheetId);
+            allItems.observe(this, items -> {
+                int cal = 0;
+                for (Items i : items) {
+                    cal = cal + i.getPrice();
                 }
-            }, 5000);
-
-            tv_total.setText(String.valueOf("Rs " + total));
+                LLcal.setVisibility(View.VISIBLE);
+                tv_total.setText(getString(R.string.rs, cal));
+                new Handler().postDelayed(() -> LLcal.setVisibility(View.GONE), 5000);
+            });
             return true;
         }
         if (id == R.id.action_delAll) {
-            db.open();
-            boolean isDel = db.deleteAllItem(sheetId);
-            db.close();
-            loadItems();
-            if (isDel) {
-                Snackbar snackbar = Snackbar.make(findViewById(android.R.id.content), "All items deleted", Snackbar.LENGTH_LONG);
-                snackbar.setTextColor(Color.parseColor("#ff0000"));
-                snackbar.show();
-            }
+            sweetAlertDialog.setTitleText("All items will be deleted permanently")
+                    .setCancelButton("Cancel", sweetAlertDialog1 -> sweetAlertDialog.dismiss())
+                    .setCancelButtonBackgroundColor(getColor(R.color.darkGreen))
+                    .setConfirmButton("Delete All", sweetAlertDialog -> {
+                        viewModel.deleteAllItem(sheetId);
+                        sweetAlertDialog.dismiss();
+                        finish();
+                    }).setConfirmButtonBackgroundColor(getColor(R.color.lightRed))
+                    .changeAlertType(SweetAlertDialog.WARNING_TYPE);
+            sweetAlertDialog.setCancelable(false);
+            sweetAlertDialog.show();
         }
-
         return super.onOptionsItemSelected(item);
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQ_CODE_SPEECH_INPUT) {
@@ -264,6 +246,7 @@ public class MainActivity extends AppCompatActivity {
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
+
     void createDialog(ArrayList<String> speechResult) {
         dialog.dismiss();
         final View layout = LayoutInflater.from(MainActivity.this).inflate(R.layout.add_item_layout, null);
@@ -304,7 +287,44 @@ public class MainActivity extends AppCompatActivity {
         dialog.setCancelable(false);
         dialog.show();
 
-
     }
 
+    void updateItemDialog(int position) {
+        Items item = itemDataAdapter.getItemAt(position);
+        final android.app.AlertDialog.Builder dialogBuilder = new android.app.AlertDialog.Builder(this);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View dialogView = inflater.inflate(R.layout.update_item_layout, null);
+        dialogBuilder.setView(dialogView);
+        dialogBuilder.setCancelable(false);
+        final EditText editText = dialogView.findViewById(R.id.et_update_itemName);
+        editText.setText(String.valueOf(item.getName()));
+        dialogBuilder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        dialogBuilder.setPositiveButton("Update", null);
+        android.app.AlertDialog alertDialog = dialogBuilder.create();
+        alertDialog.setOnShowListener(dialogInterface -> {
+            Button button = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            button.setOnClickListener(view1 -> {
+                String updatedText = editText.getText().toString();
+                if (updatedText.isEmpty()) {
+                    editText.setError("Item name is empty");
+                    editText.requestFocus();
+                    return;
+                }
+                item.setName(updatedText);
+                viewModel.updateItem(item);
+                alertDialog.dismiss();
+                itemDataAdapter.notifyItemChanged(position);
+                Snackbar snackbar = Snackbar.make(view, "Updated", Snackbar.LENGTH_LONG);
+                snackbar.setTextColor(getColor(R.color.darkGreen));
+                snackbar.show();
+            });
+        });
+        alertDialog.show();
+    }
+
+
+    @Override
+    public void onPriceUpdate(Items item) {
+        viewModel.updateItem(item);
+    }
 }

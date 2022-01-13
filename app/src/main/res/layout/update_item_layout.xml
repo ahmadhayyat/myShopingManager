@@ -13,6 +13,7 @@
             android:layout_height="wrap_content"
             android:background="@color/colorPrimary"
             android:padding="20dp"
+            android:gravity="center_horizontal"
             android:text="Update"
             android:textColor="@android:color/white"
             android:textSize="22sp" />

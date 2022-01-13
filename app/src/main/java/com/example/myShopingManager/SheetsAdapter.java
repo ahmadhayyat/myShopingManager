@@ -4,22 +4,22 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Environment;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.snackbar.Snackbar;
 
 import org.json.JSONArray;
 
@@ -28,50 +28,51 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 
-public class SheetsAdapter extends RecyclerView.Adapter<SheetsAdapter.ViewHolder> {
+public class SheetsAdapter extends ListAdapter<Sheet, SheetsAdapter.ViewHolder> {
+    SheetAdapterInteraction sheetAdapterInteraction;
     List<SheetsData> sheetsDataList;
-    LayoutInflater layoutInflater;
 
     Context context;
-    TinyDB tinyDB;
-    DatabseAccess db;
     ExportData exportData;
 
     public SheetsAdapter() {
+        super(DIFF_CALLBACK);
     }
 
-    public SheetsAdapter(List<SheetsData> sheetsData, Context context) {
-        this.context = context;
-        this.tinyDB = new TinyDB(context);
-        this.sheetsDataList = sheetsData;
-        this.layoutInflater = LayoutInflater.from(context);
+    private static final DiffUtil.ItemCallback<Sheet> DIFF_CALLBACK = new DiffUtil.ItemCallback<Sheet>() {
+        @Override
+        public boolean areItemsTheSame(Sheet oldItem, Sheet newItem) {
+            return oldItem.getId() == newItem.getId();
+        }
 
-        this.db = new DatabseAccess(context);
-        tinyDB.putInt(Constants.TOTAL, 0);
-
-    }
+        @Override
+        public boolean areContentsTheSame(Sheet oldItem, Sheet newItem) {
+            // below line is to check the course name, description and course duration.
+            return oldItem.getSheetName().equals(newItem.getSheetName())
+                    && oldItem.getDate().equals(newItem.getDate());
+        }
+    };
 
     @NonNull
     @Override
     public SheetsAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = layoutInflater.inflate(R.layout.sheets_layout, parent, false);
-
+        context = parent.getContext();
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.sheets_layout, parent, false);
         return new ViewHolder(view);
-
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final SheetsAdapter.ViewHolder holder, final int position) {
-
-        holder.sheetsDate.setText(sheetsDataList.get(position).getSheetDate());
-        holder.sheetsName.setText(sheetsDataList.get(position).getSheetName());
+    public void onBindViewHolder(@NonNull final SheetsAdapter.ViewHolder holder, int position) {
+        final Sheet sheet = getSheetAt(position);
+        holder.sheetsDate.setText(sheet.getDate());
+        holder.sheetsName.setText(sheet.getSheetName());
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent gotoMainActivity = new Intent(context, MainActivity.class);
-                gotoMainActivity.putExtra("sheetId", sheetsDataList.get(position).getSheetId());
-                gotoMainActivity.putExtra("sheetName", sheetsDataList.get(position).getSheetName());
-                gotoMainActivity.putExtra("sheetDate", sheetsDataList.get(position).getSheetDate());
+                gotoMainActivity.putExtra(Constants.EXTRA_SHEET_ID, sheet.getId());
+                gotoMainActivity.putExtra(Constants.EXTRA_SHEET_NAME, sheet.getSheetName());
+                //gotoMainActivity.putExtra("sheetDate", sheetsDataList.get(position).getSheetDate());
                 context.startActivity(gotoMainActivity);
             }
         });
@@ -79,64 +80,52 @@ public class SheetsAdapter extends RecyclerView.Adapter<SheetsAdapter.ViewHolder
         holder.ib_delsheet.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                db.open();
-                db.deleteSheet(sheetsDataList.get(position).getSheetId());
-                db.deleteItemWithSheet(sheetsDataList.get(position).getSheetId());
-                db.close();
-                Snackbar snackbar = Snackbar.make(v, "Deleted", Snackbar.LENGTH_LONG);
-                snackbar.setTextColor(Color.parseColor("#ff0000"));
-                snackbar.show();
-                refresh();
+                sheetAdapterInteraction.onDelete(sheet);
             }
         });
     }
 
-    @Override
-    public int getItemCount() {
-        return sheetsDataList.size();
+    public Sheet getSheetAt(int position) {
+        return getItem(position);
     }
 
-
-    public void refresh() {
-        /*sheetsDataList = list;*/
-        this.notifyDataSetChanged();
-        ((SheetsActivity) context).loadSheets();
-    }
-
-    public void editSheetName(final int position,final View view){
+    public void editSheetName(final int position, Context context) {
+        final Sheet sheet = getSheetAt(position);
         final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(context);
-        LayoutInflater inflater = layoutInflater;
-        final View dialogView = inflater.inflate(R.layout.update_item_layout, null);
+        final View dialogView = LayoutInflater.from(context).inflate(R.layout.update_item_layout, null);
         dialogBuilder.setView(dialogView);
         dialogBuilder.setCancelable(false);
         final EditText editText = dialogView.findViewById(R.id.et_update_itemName);
-        editText.setText(String.valueOf(sheetsDataList.get(position).getSheetName()));
+        editText.setText(String.valueOf(sheet.getSheetName()));
         dialogBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
             }
         });
-        dialogBuilder.setPositiveButton("Update", new DialogInterface.OnClickListener() {
+        dialogBuilder.setPositiveButton("Update", null);
+        final AlertDialog alertDialog = dialogBuilder.create();
+        alertDialog.setOnShowListener(new DialogInterface.OnShowListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
-                db.open();
-                boolean updated = db.updateSheetName(sheetsDataList.get(position).getSheetId(), editText.getText().toString());
-                db.close();
-
-                if (updated) {
-                    Snackbar snackbar = Snackbar.make(view, "Updated", Snackbar.LENGTH_LONG);
-                    snackbar.setTextColor(Color.parseColor("#00ff80"));
-                    snackbar.show();
-                    refresh();
-
-                }
+            public void onShow(final DialogInterface dialogInterface) {
+                Button button = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                button.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        String updatedText = editText.getText().toString();
+                        if (updatedText.isEmpty()) {
+                            editText.setError("Sheet name is empty");
+                            editText.requestFocus();
+                            return;
+                        }
+                        sheet.setSheetName(updatedText);
+                        sheetAdapterInteraction.onUpdate(position, sheet);
+                        dialogInterface.dismiss();
+                    }
+                });
             }
         });
-        AlertDialog alertDialog = dialogBuilder.create();
         alertDialog.show();
-
-
     }
 
     public boolean createFile(int position) {
@@ -197,8 +186,7 @@ public class SheetsAdapter extends RecyclerView.Adapter<SheetsAdapter.ViewHolder
     }
 
     public int getSheetId(int p) {
-        int id = sheetsDataList.get(p).getSheetId();
-        return id;
+        return sheetsDataList.get(p).getSheetId();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnCreateContextMenuListener {
@@ -223,6 +211,17 @@ public class SheetsAdapter extends RecyclerView.Adapter<SheetsAdapter.ViewHolder
             menu.add(this.getAdapterPosition(), 123, 2, "Export file");
             menu.add(this.getAdapterPosition(), 121, 0, "Edit name");
         }
+
+
     }
 
+    public void setSheetAdapterInteraction(SheetAdapterInteraction sheetAdapterInteraction) {
+        this.sheetAdapterInteraction = sheetAdapterInteraction;
+    }
+
+    public interface SheetAdapterInteraction {
+        void onDelete(Sheet sheet);
+
+        void onUpdate(int position, Sheet sheet);
+    }
 }

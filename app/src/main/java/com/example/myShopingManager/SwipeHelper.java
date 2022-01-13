@@ -246,7 +246,7 @@ public abstract class SwipeHelper extends ItemTouchHelper.SimpleCallback {
     }
 
     public interface UnderlayButtonClickListener {
-        void onClick(int pos);
+        void onClick(int position);
     }
 }
 

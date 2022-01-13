@@ -30,6 +30,8 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -49,7 +51,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class SheetsActivity extends AppCompatActivity {
+import cn.pedant.SweetAlert.SweetAlertDialog;
+
+public class SheetsActivity extends AppCompatActivity implements SheetsAdapter.SheetAdapterInteraction {
 
     private static final int FILE_SELECT_CODE = 1000;
     private final int REQ_CODE_SPEECH_INPUT = 100;
@@ -66,7 +70,10 @@ public class SheetsActivity extends AppCompatActivity {
     ArrayList<String> speechResult = new ArrayList<>();
     AlertDialog.Builder builder;
     AlertDialog dialog;
-    String date ;
+    String date;
+    ViewModel viewModel;
+    SweetAlertDialog sweetAlertDialog;
+    Context context;
 
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public static String getPathFromUri(final Context context, final Uri uri) {
@@ -201,6 +208,8 @@ public class SheetsActivity extends AppCompatActivity {
         builder = new AlertDialog.Builder(SheetsActivity.this);
         dialog = builder.create();
         date = new SimpleDateFormat("dd/MMM/yyyy", Locale.getDefault()).format(new Date());
+        context = this;
+        sweetAlertDialog = new SweetAlertDialog(context);
     }
 
     void runApp() {
@@ -229,16 +238,12 @@ public class SheetsActivity extends AppCompatActivity {
                     }
                 });
                 builder.setView(layout);
-
                 builder.setPositiveButton("Add", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-
-
-                        db.open();
-                        db.addSheet(et_sheetName.getText().toString(), date);
-                        db.close();
-                        loadSheets();
+                        Sheet sheet = new Sheet();
+                        sheet.setSheetName(et_sheetName.getText().toString());
+                        viewModel.insertSheet(sheet);
                     }
                 });
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -247,12 +252,9 @@ public class SheetsActivity extends AppCompatActivity {
                         dialog.dismiss();
                     }
                 });
-
                 dialog = builder.create();
                 dialog.setCancelable(false);
                 dialog.show();
-
-
             }
         });
 
@@ -300,28 +302,35 @@ public class SheetsActivity extends AppCompatActivity {
     }
 
     public void loadSheets() {
-        db.open();
+        /*db.open();
         sheetsDataList = db.getSheets();
-        db.close();
-        sheetsAdapter = new SheetsAdapter(sheetsDataList, SheetsActivity.this);
+        db.close();*/
+        sheetsAdapter = new SheetsAdapter();
         sheetsRecyclerView.setLayoutManager(new GridLayoutManager(SheetsActivity.this, 2));
-        sheetsAdapter.notifyDataSetChanged();
         sheetsRecyclerView.setAdapter(sheetsAdapter);
-        if (sheetsDataList.size() > 0) {
-            no_sheet.setVisibility(View.GONE);
-        } else {
-            no_sheet.setVisibility(View.VISIBLE);
-        }
+        sheetsAdapter.setSheetAdapterInteraction(this);
+
+
+        viewModel = new ViewModelProvider(this).get(ViewModel.class);
+        viewModel.getSheetsList().observe(this, new Observer<List<Sheet>>() {
+            @Override
+            public void onChanged(List<Sheet> sheets) {
+                sheetsAdapter.submitList(sheets);
+                if (sheets.size() > 0) {
+                    no_sheet.setVisibility(View.GONE);
+                } else {
+                    no_sheet.setVisibility(View.VISIBLE);
+                }
+            }
+        });
     }
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        sheetId = sheetsAdapter.getSheetId(item.getGroupId());
         itemId = item.getGroupId();
         switch (item.getItemId()) {
             case 121:
-                View view = getWindow().getDecorView().getRootView();
-                sheetsAdapter.editSheetName(itemId, view);
+                sheetsAdapter.editSheetName(itemId, this);
                 return true;
             case 122:
                 showFileChooser();
@@ -532,4 +541,30 @@ public class SheetsActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    public void onDelete(Sheet sheet) {
+        sweetAlertDialog.setTitleText("Sheet will be deleted permanently")
+                .setCancelButton("Cancel", sweetAlertDialog1 -> sweetAlertDialog.dismiss())
+                .setCancelButtonBackgroundColor(getColor(R.color.darkGreen))
+                .setConfirmButton("Delete", sweetAlertDialog -> {
+                    viewModel.deleteAllItem(sheet.id);
+                    viewModel.deleteSheet(sheet);
+                    sweetAlertDialog.dismiss();
+                    Snackbar snackbar = Snackbar.make(getWindow().getDecorView().getRootView(), "Deleted", Snackbar.LENGTH_LONG);
+                    snackbar.setTextColor(getColor(R.color.red));
+                    snackbar.show();
+                }).setConfirmButtonBackgroundColor(getColor(R.color.lightRed))
+                .changeAlertType(SweetAlertDialog.WARNING_TYPE);
+        sweetAlertDialog.setCancelable(false);
+        sweetAlertDialog.show();
+    }
+
+    @Override
+    public void onUpdate(int position, Sheet sheet) {
+        viewModel.updateSheet(sheet);
+        sheetsAdapter.notifyItemChanged(position);
+        Snackbar snackbar = Snackbar.make(getWindow().getDecorView().getRootView(), "Updated", Snackbar.LENGTH_LONG);
+        snackbar.setTextColor(getColor(R.color.darkGreen));
+        snackbar.show();
+    }
 }

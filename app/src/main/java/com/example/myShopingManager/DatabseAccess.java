@@ -52,37 +52,15 @@ public class DatabseAccess {
     public boolean addItems(String itemName,int sheetId,String itemsDate) {
 
         ContentValues contentValues = new ContentValues();
-        contentValues.put(Constants.ITEM_NAME, itemName);
+        contentValues.put(Constants.COL_ITEM_NAME, itemName);
         contentValues.put(Constants.ITEM_SHEETID, sheetId);
-        contentValues.put(Constants.ITEM_DATE, itemsDate);
+        contentValues.put(Constants.COL_ITEM_DATE, itemsDate);
 
         long result = db.insert(Constants.TABLE_ITEMS, null, contentValues);
-        if (result == -1) {
-            return false;
-
-        } else return true;
+        return result != -1;
     }
 
 
-    List<ItemsData> getItems(int sheetId) {
-
-        List<ItemsData> itemsDataList = new ArrayList<>();
-        String query = " SELECT * FROM " + Constants.TABLE_ITEMS +" Where sheet ='"+sheetId+"'";
-
-        c = db.rawQuery(query, null);
-        if (c.moveToFirst()) {
-            do {
-                ItemsData itemsData = new ItemsData();
-                itemsData.setItemID(c.getInt(0));
-                itemsData.setItemName(c.getString(1));
-                itemsData.setItemPrice(c.getInt(2));
-                itemsData.setItemsDate(c.getString(4));
-
-                itemsDataList.add(itemsData);
-            } while (c.moveToNext());
-        }
-        return itemsDataList;
-    }
     Integer  calculate(int sheetId) {
         tinyDB.putInt(Constants.TOTAL,0);
         Integer calculated = 0 ;
@@ -104,32 +82,23 @@ public class DatabseAccess {
 
     public boolean updateItemsPrice(int id, int price) {
         ContentValues contentValues = new ContentValues();
-        contentValues.put(Constants.ITEM_PRICE, price);
+        contentValues.put(Constants.COL_ITEM_PRICE, price);
 
         long result = db.update(Constants.TABLE_ITEMS, contentValues, "id=?", new String[]{String.valueOf(id)});
-        if (result == -1) {
-            return false;
-
-        } else return true;
+        return result != -1;
     }
     public boolean updateItemsName(int id, String name) {
         ContentValues contentValues = new ContentValues();
-        contentValues.put(Constants.ITEM_NAME, name);
+        contentValues.put(Constants.COL_ITEM_NAME, name);
 
         long result = db.update(Constants.TABLE_ITEMS, contentValues, "id=?", new String[]{String.valueOf(id)});
-        if (result == -1) {
-            return false;
-
-        } else return true;
+        return result != -1;
     }
 
     public boolean deleteItem(int id) {
 
         long result = db.delete(Constants.TABLE_ITEMS, "id=?", new String[]{String.valueOf(id)});
-        if (result == -1) {
-            return false;
-
-        } else return true;
+        return result != -1;
     }
     boolean deleteAllItem(int sheetId) {
         long result = db.delete(Constants.TABLE_ITEMS,"sheet=?",new String[]{String.valueOf(sheetId)});
@@ -140,13 +109,10 @@ public class DatabseAccess {
 
         ContentValues contentValues = new ContentValues();
         contentValues.put(Constants.SHEET_NAME, sheetName);
-        contentValues.put(Constants.SHEET_DATE, sheetDate);
+        contentValues.put(Constants.COL_SHEET_DATE, sheetDate);
 
         long result = db.insert(Constants.TABLE_SHEETS, null, contentValues);
-        if (result == -1) {
-            return false;
-
-        } else return true;
+        return result != -1;
     }
     public boolean updateSheetName(int id, String name) {
         ContentValues contentValues = new ContentValues();

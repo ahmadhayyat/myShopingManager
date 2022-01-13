@@ -6,5 +6,6 @@
     <string name="speech_not_supported">Sorry! Your device doesn\'t support speech input</string>
     <string name="title_activity_sheets">Sheets</string>
     <string name="msg" >Permission required to store data in phone\n\nAre you sure to <b>ALLOW</b> this permission? </string>
+    <string name="rs">Rs %1$d</string>
 
 </resources>
