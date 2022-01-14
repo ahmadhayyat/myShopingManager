@@ -50,7 +50,11 @@ public class ViewModel extends AndroidViewModel {
         repository.deleteAllItems(sheetId);
     }
 
-    public LiveData<List<Items>> getItemsList(int sheetId) {
+    public LiveData<List<Items>> getItems(int sheetId) {
         return repository.getAllItems(sheetId);
+    }
+
+    public List<Items> getItemsList(int sheetId) {
+        return repository.getAllItemsList(sheetId);
     }
 }

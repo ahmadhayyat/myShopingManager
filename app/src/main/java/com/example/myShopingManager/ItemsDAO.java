@@ -14,6 +14,9 @@ public interface ItemsDAO {
     @Query("SELECT * FROM " + Constants.TABLE_ITEMS + " WHERE sheetId =:sheetId ")
     LiveData<List<Items>> getAll(int sheetId);
 
+    @Query("SELECT * FROM " + Constants.TABLE_ITEMS + " WHERE sheetId =:sheetId ")
+    List<Items> getAllList(int sheetId);
+
     @Query("DELETE FROM " + Constants.TABLE_ITEMS + " WHERE sheetId=:sheetId ")
     void deleteAllItems(int sheetId);
 

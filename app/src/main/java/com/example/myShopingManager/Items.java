@@ -16,6 +16,8 @@ public class Items {
     String date;
     @ColumnInfo(name = Constants.COL_ITEM_PRICE)
     Integer price;
+    @ColumnInfo(name = Constants.COL_ITEM_STATUS)
+    Integer status;
 
     public String getName() {
         return name;
@@ -31,6 +33,14 @@ public class Items {
 
     public void setPrice(Integer price) {
         this.price = price;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
     }
 
     public int getId() {

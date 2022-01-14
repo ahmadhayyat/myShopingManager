@@ -38,7 +38,7 @@ dependencies {
     implementation 'com.karumi:dexter:6.2.3'
     implementation 'com.github.f0ris.sweetalert:library:1.6.2'
     debugImplementation 'com.amitshekhar.android:debug-db:1.0.6'
-
+        implementation "com.github.skydoves:androidribbon:1.0.3"
     implementation 'com.readystatesoftware.sqliteasset:sqliteassethelper:+'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

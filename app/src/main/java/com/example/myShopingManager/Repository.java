@@ -89,6 +89,10 @@ public class Repository {
         return itemsDAO.getAll(sheetId);
     }
 
+    public List<Items> getAllItemsList(int sheetId) {
+        return itemsDAO.getAllList(sheetId);
+    }
+
     public void insertItem(Items item) {
         item.setDate(getDate());
         new InsertItem(itemsDAO).execute(item);

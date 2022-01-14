@@ -22,7 +22,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -116,8 +115,10 @@ public class MainActivity extends AppActivity implements ItemDataAdapter.ItemAda
                 Items item = new Items();
                 item.setName(et_itemName.getText().toString());
                 item.setPrice(0);
+                item.setStatus(Constants.STATUS_NEUTRAL);
                 item.setSheetId(sheetId);
                 viewModel.insertItem(item);
+                recyclerView.scrollToPosition(itemDataAdapter.getItemCount() - 1);
             });
             builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
             dialog = builder.create();
@@ -148,7 +149,7 @@ public class MainActivity extends AppActivity implements ItemDataAdapter.ItemAda
                 underlayButtons.add(new SwipeHelper.UnderlayButton(
                         "Edit",
                         0,
-                        getColor(R.color.orange),
+                        getColor(R.color.darkOrange),
                         pos -> updateItemDialog(pos)
                 ));
 
@@ -179,7 +180,7 @@ public class MainActivity extends AppActivity implements ItemDataAdapter.ItemAda
         recyclerView.setAdapter(itemDataAdapter);
         itemDataAdapter.setInteraction(this);
         viewModel = new ViewModelProvider(this).get(ViewModel.class);
-        viewModel.getItemsList(sheetId).observe(this, items -> {
+        viewModel.getItems(sheetId).observe(this, items -> {
             itemDataAdapter.submitList(items);
             if (items.size() > 0)
                 noItem.setVisibility(View.GONE);
@@ -201,16 +202,14 @@ public class MainActivity extends AppActivity implements ItemDataAdapter.ItemAda
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_calculate) {
-            LiveData<List<Items>> allItems = viewModel.getItemsList(sheetId);
-            allItems.observe(this, items -> {
-                int cal = 0;
-                for (Items i : items) {
-                    cal = cal + i.getPrice();
-                }
+            List<Items> allItems = viewModel.getItemsList(sheetId);
+            int cal = 0;
+            for (Items i : allItems) {
+                cal = cal + i.getPrice();
+            }
                 LLcal.setVisibility(View.VISIBLE);
                 tv_total.setText(getString(R.string.rs, cal));
                 new Handler().postDelayed(() -> LLcal.setVisibility(View.GONE), 5000);
-            });
             return true;
         }
         if (id == R.id.action_delAll) {
@@ -325,6 +324,11 @@ public class MainActivity extends AppActivity implements ItemDataAdapter.ItemAda
 
     @Override
     public void onPriceUpdate(Items item) {
+        viewModel.updateItem(item);
+    }
+
+    @Override
+    public void onStatusChange(Items item) {
         viewModel.updateItem(item);
     }
 }

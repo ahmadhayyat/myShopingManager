@@ -2,7 +2,6 @@ package com.example.myShopingManager;
 
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Environment;
@@ -66,23 +65,15 @@ public class SheetsAdapter extends ListAdapter<Sheet, SheetsAdapter.ViewHolder> 
         final Sheet sheet = getSheetAt(position);
         holder.sheetsDate.setText(sheet.getDate());
         holder.sheetsName.setText(sheet.getSheetName());
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent gotoMainActivity = new Intent(context, MainActivity.class);
-                gotoMainActivity.putExtra(Constants.EXTRA_SHEET_ID, sheet.getId());
-                gotoMainActivity.putExtra(Constants.EXTRA_SHEET_NAME, sheet.getSheetName());
-                //gotoMainActivity.putExtra("sheetDate", sheetsDataList.get(position).getSheetDate());
-                context.startActivity(gotoMainActivity);
-            }
+        holder.itemView.setOnClickListener(v -> {
+            Intent gotoMainActivity = new Intent(context, MainActivity.class);
+            gotoMainActivity.putExtra(Constants.EXTRA_SHEET_ID, sheet.getId());
+            gotoMainActivity.putExtra(Constants.EXTRA_SHEET_NAME, sheet.getSheetName());
+            //gotoMainActivity.putExtra("sheetDate", sheetsDataList.get(position).getSheetDate());
+            context.startActivity(gotoMainActivity);
         });
 
-        holder.ib_delsheet.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                sheetAdapterInteraction.onDelete(sheet);
-            }
-        });
+        holder.ib_delsheet.setOnClickListener(v -> sheetAdapterInteraction.onDelete(sheet));
     }
 
     public Sheet getSheetAt(int position) {
@@ -97,93 +88,29 @@ public class SheetsAdapter extends ListAdapter<Sheet, SheetsAdapter.ViewHolder> 
         dialogBuilder.setCancelable(false);
         final EditText editText = dialogView.findViewById(R.id.et_update_itemName);
         editText.setText(String.valueOf(sheet.getSheetName()));
-        dialogBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
+        dialogBuilder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
         dialogBuilder.setPositiveButton("Update", null);
         final AlertDialog alertDialog = dialogBuilder.create();
-        alertDialog.setOnShowListener(new DialogInterface.OnShowListener() {
-            @Override
-            public void onShow(final DialogInterface dialogInterface) {
-                Button button = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                button.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        String updatedText = editText.getText().toString();
-                        if (updatedText.isEmpty()) {
-                            editText.setError("Sheet name is empty");
-                            editText.requestFocus();
-                            return;
-                        }
-                        sheet.setSheetName(updatedText);
-                        sheetAdapterInteraction.onUpdate(position, sheet);
-                        dialogInterface.dismiss();
-                    }
-                });
-            }
+        alertDialog.setOnShowListener(dialogInterface -> {
+            Button button = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            button.setOnClickListener(view -> {
+                String updatedText = editText.getText().toString();
+                if (updatedText.isEmpty()) {
+                    editText.setError("Sheet name is empty");
+                    editText.requestFocus();
+                    return;
+                }
+                sheet.setSheetName(updatedText);
+                sheetAdapterInteraction.onUpdate(position, sheet);
+                dialogInterface.dismiss();
+            });
         });
         alertDialog.show();
     }
 
-    public boolean createFile(int position) {
-
-        boolean isCreated = createNow(position);
-        if (isCreated) {
-            String fileName = sheetsDataList.get(position).getSheetName();
-            share(fileName);
-            return true;
-        }
-
-        return false;
-    }
 
 
-    private boolean createNow(int position) {
-        String fileName = sheetsDataList.get(position).getSheetName();
-        exportData = new ExportData(context);
-        JSONArray convertedJson = exportData.getResults(sheetsDataList.get(position).sheetId);
 
-        try {
-
-
-            File checkFile = new File(Environment.getExternalStorageDirectory().toString() + "/budget calculator/");
-            if (!checkFile.exists()) {
-                checkFile.mkdir();
-            }
-            FileWriter file = new FileWriter(checkFile.getAbsolutePath() + "/" + fileName + ".json");
-
-            file.write(String.valueOf(convertedJson));
-            file.flush();
-            file.close();
-
-            return true;
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    public void share(String fileName) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(Environment.getExternalStorageDirectory().getPath());
-        sb.append("/budget calculator/");
-        sb.append(fileName);
-        String str2 = ".json";
-        sb.append(str2);
-
-        Uri parse = Uri.parse(sb.toString());
-        Intent intent = new Intent("android.intent.action.SEND");
-        intent.setType("*/text/plain");
-        intent.putExtra("android.intent.extra.STREAM", parse);
-        intent.putExtra("android.intent.extra.TEXT", parse);
-        context.startActivity(Intent.createChooser(intent, "Share File"));
-
-    }
 
     public int getSheetId(int p) {
         return sheetsDataList.get(p).getSheetId();

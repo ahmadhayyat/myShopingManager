@@ -9,9 +9,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
+        android:background="@drawable/rounded_bg_white"
         android:orientation="vertical"
-        android:background="@drawable/black_round_border"
-        android:elevation="8dp">
+        >
 
         <LinearLayout
             android:layout_width="match_parent"

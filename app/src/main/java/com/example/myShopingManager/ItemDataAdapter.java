@@ -2,26 +2,26 @@ package com.example.myShopingManager;
 
 import android.content.Context;
 import android.os.Handler;
-import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 
 public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHolder> {
     Context context;
     ItemAdapterInteraction interaction;
+    ArrayList<Integer> purchasedItems;
 
     protected ItemDataAdapter() {
         super(DIFF_CALLBACK);
@@ -53,24 +53,25 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull final ItemDataAdapter.ViewHolder holder, final int position) {
         final Items item = getItemAt(position);
-        /*if (Constants.getInstance().getDate().equals(item.getDate())) {
+        String prevMsgTime;
+        if (position < getItemCount() - 1)
+            prevMsgTime = getItemAt(position + 1).getDate();
+        else prevMsgTime = getItemAt(position).getDate();
+        String currentMsgTime = item.getDate();
+        if (position == 0) {
+            holder.itemsDate.setText(currentMsgTime.toUpperCase());
             holder.itemsDate.setVisibility(View.VISIBLE);
-            holder.itemsDate.setText(item.getDate());
-        } else holder.itemsDate.setVisibility(View.GONE);*/
-
-        if (position != 0) {
-            processDate(holder.itemsDate, item.getDate()
-                    , getItemAt(position - 1).getDate()
-                    , false)
-            ;
+        } else if (currentMsgTime.equalsIgnoreCase(prevMsgTime)) {
+            holder.itemsDate.setVisibility(View.GONE);
         } else {
-            processDate(holder.itemsDate, item.getDate()
-                    , null
-                    , true)
-            ;
+            holder.itemsDate.setText(currentMsgTime.toUpperCase());
+            holder.itemsDate.setVisibility(View.VISIBLE);
         }
-
-
+        if (item.getStatus() == Constants.STATUS_PURCHASED)
+            setPurchasedUI(holder);
+        else if (item.getStatus() == Constants.STATUS_NOT_AVAILABLE)
+            setNotAvailableUI(holder);
+        else setNotNeutralUI(holder);
         holder.itemName.setText(item.getName());
         if (item.getPrice() != 0 || item.getPrice() != null) {
             holder.itemPrice.setText(String.valueOf(item.getPrice()));
@@ -87,7 +88,45 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
                 }, 1000);
             }
         });
-        holder.itemView.setOnClickListener(v -> holder.itemView.setBackgroundColor(context.getResources().getColor(R.color.lightGreen)));
+
+        holder.itemView.setOnClickListener(v -> {
+            if (item.getStatus() == Constants.STATUS_PURCHASED ||
+                    item.getStatus() == Constants.STATUS_NOT_AVAILABLE) {
+                item.setStatus(Constants.STATUS_NEUTRAL);
+                interaction.onStatusChange(item);
+                setNotNeutralUI(holder);
+            } else {
+                item.setStatus(Constants.STATUS_PURCHASED);
+                interaction.onStatusChange(item);
+                setPurchasedUI(holder);
+            }
+        });
+
+        holder.itemView.setOnLongClickListener(view -> {
+            item.setStatus(Constants.STATUS_NOT_AVAILABLE);
+            interaction.onStatusChange(item);
+            setNotAvailableUI(holder);
+            return true;
+        });
+    }
+
+    void setPurchasedUI(ViewHolder holder) {
+        holder.itemsStatus.setVisibility(View.VISIBLE);
+        holder.itemsStatus.setText(context.getString(R.string.purchased));
+        holder.itemsStatus.setBackground(AppCompatResources.getDrawable(context, R.drawable.purchased_bg));
+        holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_light_green));
+    }
+
+    void setNotAvailableUI(ViewHolder holder) {
+        holder.itemsStatus.setVisibility(View.VISIBLE);
+        holder.itemsStatus.setText(context.getString(R.string.not_available));
+        holder.itemsStatus.setBackground(AppCompatResources.getDrawable(context, R.drawable.not_available_bg));
+        holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_light_orange));
+    }
+
+    void setNotNeutralUI(ViewHolder holder) {
+        holder.itemsStatus.setVisibility(View.GONE);
+        holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_white));
     }
 
     public Items getItemAt(int position) {
@@ -95,10 +134,10 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
-        TextView itemName, itemsDate;
+        TextView itemName, itemsDate, itemsStatus;
         EditText itemPrice;
         CheckBox cb_save;
-
+        LinearLayout llMain;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -106,48 +145,8 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
             itemPrice = itemView.findViewById(R.id.itemPrice);
             itemsDate = itemView.findViewById(R.id.itemsDate);
             cb_save = itemView.findViewById(R.id.cb_save);
-
-        }
-    }
-
-    private void processDate(@NonNull TextView tv, String dateAPIStr
-            , String dateAPICompareStr
-            , boolean isFirstItem) {
-
-        SimpleDateFormat f = new SimpleDateFormat("dd/MM/yyyy");
-        if (isFirstItem) {
-            //first item always got date/today to shows
-            //and overkill to compare with next item flow
-            Date dateFromAPI = null;
-            try {
-                dateFromAPI = f.parse(dateAPIStr);
-                if (DateUtils.isToday(dateFromAPI.getTime())) tv.setText("today");
-                else if (DateUtils.isToday(dateFromAPI.getTime() + DateUtils.DAY_IN_MILLIS))
-                    tv.setText("yesterday");
-                else tv.setText(dateAPIStr);
-                tv.setIncludeFontPadding(false);
-                tv.setVisibility(View.VISIBLE);
-            } catch (ParseException e) {
-                e.printStackTrace();
-                tv.setVisibility(View.GONE);
-            }
-        } else {
-            if (!dateAPIStr.equalsIgnoreCase(dateAPICompareStr)) {
-                try {
-                    Date dateFromAPI = f.parse(dateAPIStr);
-                    if (DateUtils.isToday(dateFromAPI.getTime())) tv.setText("today");
-                    else if (DateUtils.isToday(dateFromAPI.getTime() + DateUtils.DAY_IN_MILLIS))
-                        tv.setText("yesterday");
-                    else tv.setText(dateAPIStr);
-                    tv.setIncludeFontPadding(false);
-                    tv.setVisibility(View.VISIBLE);
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                    tv.setVisibility(View.GONE);
-                }
-            } else {
-                tv.setVisibility(View.GONE);
-            }
+            llMain = itemView.findViewById(R.id.llMain);
+            itemsStatus = itemView.findViewById(R.id.itemStatus);
         }
     }
 
@@ -157,5 +156,7 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
 
     interface ItemAdapterInteraction {
         void onPriceUpdate(Items item);
+
+        void onStatusChange(Items item);
     }
 }

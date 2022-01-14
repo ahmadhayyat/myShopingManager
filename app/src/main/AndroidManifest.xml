@@ -16,6 +16,9 @@
         <activity
             android:name="com.example.myShopingManager.MainActivity"
             android:label="@string/title_activity_sheets"
+            android:theme="@style/AppTheme.NoActionBar" /><activity
+            android:name="com.example.myShopingManager.ImportFileActivity"
+            android:label="@string/title_activity_import_file"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name="com.example.myShopingManager.SheetsActivity"
