@@ -25,6 +25,7 @@ public class Constants {
     public static final int STATUS_NEUTRAL = 0;
     public static final int STATUS_PURCHASED = 1;
     public static final int STATUS_NOT_AVAILABLE = 2;
+    public static final int STATUS_NO_NEED= 3;
     private static Constants instance;
     private ArrayList<Integer> purchasedItems;
 

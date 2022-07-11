@@ -11,7 +11,7 @@ public class Repository {
     SheetDAO sheetDAO;
     ItemsDAO itemsDAO;
 
-    public Repository(Application application) {
+    public  Repository(Application application) {
         AppDataBase appDataBase = AppDataBase.getInstance(application);
         sheetDAO = appDataBase.sheetDAO();
         itemsDAO = appDataBase.itemsDAO();

@@ -1,6 +1,7 @@
 package com.example.myShopingManager;
 
 import android.content.Context;
+import android.graphics.Paint;
 import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,6 +23,7 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
     Context context;
     ItemAdapterInteraction interaction;
     ArrayList<Integer> purchasedItems;
+    long lastClickTime = 0;
 
     protected ItemDataAdapter() {
         super(DIFF_CALLBACK);
@@ -71,7 +73,10 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
             setPurchasedUI(holder);
         else if (item.getStatus() == Constants.STATUS_NOT_AVAILABLE)
             setNotAvailableUI(holder);
-        else setNotNeutralUI(holder);
+        else if (item.getStatus() == Constants.STATUS_NO_NEED)
+            setNoNeedUI(holder);
+        else
+            setNotNeutralUI(holder);
         holder.itemName.setText(item.getName());
         if (item.getPrice() != 0 || item.getPrice() != null) {
             holder.itemPrice.setText(String.valueOf(item.getPrice()));
@@ -90,19 +95,30 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
         });
 
         holder.itemView.setOnClickListener(v -> {
-            if (item.getStatus() == Constants.STATUS_PURCHASED ||
-                    item.getStatus() == Constants.STATUS_NOT_AVAILABLE) {
-                item.setStatus(Constants.STATUS_NEUTRAL);
+            long clickTime = System.currentTimeMillis();
+            final long DOUBLE_CLICK_TIME_DELTA = 300;
+            if (clickTime - lastClickTime < DOUBLE_CLICK_TIME_DELTA) {
+                item.setStatus(Constants.STATUS_NO_NEED);
                 interaction.onStatusChange(item);
-                setNotNeutralUI(holder);
+                setNoNeedUI(holder);
             } else {
-                item.setStatus(Constants.STATUS_PURCHASED);
-                interaction.onStatusChange(item);
-                setPurchasedUI(holder);
+                if (item.getStatus() == Constants.STATUS_PURCHASED ||
+                        item.getStatus() == Constants.STATUS_NO_NEED ||
+                        item.getStatus() == Constants.STATUS_NOT_AVAILABLE) {
+                    item.setStatus(Constants.STATUS_NEUTRAL);
+                    interaction.onStatusChange(item);
+                    setNotNeutralUI(holder);
+                } else {
+                    item.setStatus(Constants.STATUS_PURCHASED);
+                    interaction.onStatusChange(item);
+                    setPurchasedUI(holder);
+                }
             }
+            lastClickTime = clickTime;
         });
 
-        holder.itemView.setOnLongClickListener(view -> {
+        holder.itemView.setOnLongClickListener(view ->
+        {
             item.setStatus(Constants.STATUS_NOT_AVAILABLE);
             interaction.onStatusChange(item);
             setNotAvailableUI(holder);
@@ -112,6 +128,7 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
 
     void setPurchasedUI(ViewHolder holder) {
         holder.itemsStatus.setVisibility(View.VISIBLE);
+        holder.itemName.setPaintFlags(0);
         holder.itemsStatus.setText(context.getString(R.string.purchased));
         holder.itemsStatus.setBackground(AppCompatResources.getDrawable(context, R.drawable.purchased_bg));
         holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_light_green));
@@ -120,13 +137,23 @@ public class ItemDataAdapter extends ListAdapter<Items, ItemDataAdapter.ViewHold
     void setNotAvailableUI(ViewHolder holder) {
         holder.itemsStatus.setVisibility(View.VISIBLE);
         holder.itemsStatus.setText(context.getString(R.string.not_available));
+        holder.itemName.setPaintFlags(0);
         holder.itemsStatus.setBackground(AppCompatResources.getDrawable(context, R.drawable.not_available_bg));
-        holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_light_orange));
+        holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_light_red));
     }
 
     void setNotNeutralUI(ViewHolder holder) {
         holder.itemsStatus.setVisibility(View.GONE);
+        holder.itemName.setPaintFlags(0);
         holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_white));
+    }
+
+    void setNoNeedUI(ViewHolder holder) {
+        holder.itemsStatus.setVisibility(View.VISIBLE);
+        holder.itemName.setPaintFlags(holder.itemName.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+        holder.itemsStatus.setText(context.getString(R.string.no_need));
+        holder.itemsStatus.setBackground(AppCompatResources.getDrawable(context, R.drawable.no_need_bg));
+        holder.llMain.setBackground(AppCompatResources.getDrawable(context, R.drawable.rounded_bg_light_orange));
     }
 
     public Items getItemAt(int position) {
